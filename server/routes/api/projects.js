@@ -1,25 +1,31 @@
 const express = require('express');
-const MongoClient = require('mongodb').MongoClient;
+const mongodb = require('mongodb');
 
 const router = express.Router();
 
-const uri = "mongodb+srv://junsan:12345@cluster0.2uobg.mongodb.net/project_manager?retryWrites=true&w=majority";
-const client = new MongoClient(uri, { useNewUrlParser: true,  useUnifiedTopology: true });
+async function connectDb() {
+    const uri = "mongodb+srv://junsan:12345@cluster0.2uobg.mongodb.net/project_manager?retryWrites=true&w=majority";
+    const client = await mongodb.MongoClient.connect(uri, { useNewUrlParser: true,  useUnifiedTopology: true });
 
-var projects = [];
+    return client.db("project_manager").collection("projects");
+}
 
-client.connect(err => {
-    const collection = client.db("project_manager").collection("projects");
-    collection.find({}).toArray()
-    .then(items => {
-        projects = items;
-    }); 
-    // perform actions on the collection object
+router.get('/', async (req, res) => {
+    const projects = await connectDb();
+    res.send(await projects.find().toArray());
+})
+
+router.post('/', async (req, res) => {
+    const projects = await connectDb();
+    await projects.insertOne({name: req.body.name, tasks: req.body.tasks, created_at: new Date()});
+    res.status(201).send('Added');
 });
 
+router.delete('/:id', async (req, res) => {
+    const projects = await connectDb();
+    await projects.deleteOne({_id: mongodb.ObjectID(req.params.id)});
+    res.status(200).send('Deleted');
+});
 
-router.get('/', (req, res) => {
-    res.send(projects);
-})
 
 module.exports = router;
